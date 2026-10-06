@@ -10,6 +10,7 @@ enum Role {
   STUDENT
   ADMIN
   SUPER_ADMIN
+  EDITOR
 }
 
 enum DriveStatus {
@@ -32,6 +33,7 @@ enum ApplicationStatus {
 model User {
   id               String           @id @default(uuid())
   email            String           @unique
+  name             String?
   passwordHash     String
   role             Role             @default(STUDENT)
   isActive         Boolean          @default(true)

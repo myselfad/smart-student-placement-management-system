@@ -1,9 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { Link } from 'react-router-dom';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, Building, Search } from 'lucide-react';
+import { useState } from 'react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Input } from '../../components/ui/Input';
+import Loader from '../../components/Loader';
 
 export default function AdminDrives() {
+  const [search, setSearch] = useState('');
+
   const { data: drives, isLoading } = useQuery({
     queryKey: ['admin-drives'],
     queryFn: async () => {
@@ -12,73 +22,100 @@ export default function AdminDrives() {
     }
   });
 
-  if (isLoading) return <div className="p-4">Loading drives...</div>;
+  const filtered = (drives || []).filter((d: any) => {
+    const q = search.toLowerCase();
+    return !q || d.title?.toLowerCase().includes(q) || d.company?.name?.toLowerCase().includes(q);
+  });
+
+  if (isLoading) return <Loader text="Loading drives..." />;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Placement Drives</h1>
-          <p className="text-muted-foreground">Manage active and past placement drives.</p>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <PageHeader
+        title="Placement Drives"
+        description="Manage and track campus recruitment opportunities."
+      >
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <Input
+            placeholder="Search drives..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 w-52"
+          />
         </div>
-        <Link 
-          to="/admin/drives/new" 
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90"
-        >
+        <Button className="gap-2" disabled>
           <Plus className="w-4 h-4" /> Create Drive
-        </Link>
-      </div>
+        </Button>
+      </PageHeader>
 
-      <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-muted text-muted-foreground uppercase">
-            <tr>
-              <th className="px-6 py-3 font-medium">Company & Role</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium">Deadline</th>
-              <th className="px-6 py-3 font-medium text-center">Applicants</th>
-              <th className="px-6 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {drives?.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                  No placement drives found.
-                </td>
-              </tr>
-            ) : (
-              drives?.map((drive: any) => (
-                <tr key={drive.id} className="hover:bg-muted/50">
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-foreground">{drive.title}</div>
-                    <div className="text-muted-foreground mt-0.5">{drive.company?.name}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-accent text-accent-foreground text-xs font-medium rounded-full border">
-                      {drive.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    {new Date(drive.applicationDeadline).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5 font-medium">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      {drive._count?.applications || 0}
+      {filtered.length === 0 ? (
+        search ? (
+          <EmptyState
+            icon={<Search className="h-10 w-10" />}
+            title="No results found"
+            description={`No drives match "${search}".`}
+          />
+        ) : (
+          <EmptyState
+            icon={<Building className="h-10 w-10" />}
+            title="No placement drives yet"
+            description="Create your first placement drive to start the recruitment process."
+          />
+        )
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Company & Role</TableHead>
+              <TableHead>Package</TableHead>
+              <TableHead>Deadline</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-center">Applicants</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((drive: any) => (
+              <TableRow key={drive.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/15 to-[hsl(196,100%,47%)]/15 flex items-center justify-center flex-shrink-0">
+                      <Building className="h-4 w-4 text-primary" />
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-3">
-                    <Link to={`/admin/drives/${drive.id}/applicants`} className="font-medium text-primary hover:underline">
-                      Manage Applicants
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    <div>
+                      <div className="font-semibold text-foreground text-sm">{drive.title}</div>
+                      <div className="text-xs text-muted-foreground">{drive.company?.name}</div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{drive.compensation || '—'}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(drive.applicationDeadline).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={drive.status === 'OPEN' ? 'success' : 'secondary'}>
+                    {drive.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-sm font-medium">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    {drive._count?.applications ?? 0}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Link to={`/admin/drives/${drive.id}/applicants`}>
+                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/5">
+                      Manage →
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </div>
   );
 }

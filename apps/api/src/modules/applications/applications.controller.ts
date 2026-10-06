@@ -21,6 +21,10 @@ export class ApplicationsController {
     res.json(apps);
   }
 
+  static async listAll(req: AuthRequest, res: Response) {
+    res.json(await ApplicationsService.listAll(req.query.status as string | undefined));
+  }
+
   static async getById(req: AuthRequest, res: Response) {
     try {
       const app = await ApplicationsService.getApplicationDetail(req.params.id as string, req.user!);

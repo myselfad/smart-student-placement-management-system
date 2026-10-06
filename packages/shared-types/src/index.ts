@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // --- Enums ---
-export const RoleEnum = z.enum(["STUDENT", "ADMIN", "SUPER_ADMIN"]);
+export const RoleEnum = z.enum(["STUDENT", "ADMIN", "SUPER_ADMIN", "EDITOR"]);
 export type Role = z.infer<typeof RoleEnum>;
 
 export const DriveStatusEnum = z.enum(["DRAFT", "OPEN", "CLOSED", "ARCHIVED"]);
@@ -34,7 +34,7 @@ export type LoginData = z.infer<typeof LoginSchema>;
 
 export const InviteAdminSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["ADMIN", "SUPER_ADMIN"]),
+  role: z.enum(["ADMIN", "SUPER_ADMIN", "EDITOR"]),
 });
 export type InviteAdminData = z.infer<typeof InviteAdminSchema>;
 
@@ -47,6 +47,7 @@ export const UpdateProfileSchema = z.object({
   graduationYear: z.number().int().positive().optional(),
   cgpa: z.number().min(0).max(10).optional(),
   backlogCount: z.number().int().min(0).optional(),
+  skills: z.array(z.string()).optional(),
 });
 export type UpdateProfileData = z.infer<typeof UpdateProfileSchema>;
 
@@ -61,7 +62,8 @@ export const CreateDriveSchema = z.object({
   selectionProcess: z.string().optional(),
   openings: z.number().int().min(1),
   applicationDeadline: z.string().datetime(),
-  
+  status: DriveStatusEnum.optional(),
+
   // Eligibility Criteria
   minCgpa: z.number().min(0).max(10).optional(),
   allowedBranches: z.array(z.string()).min(1, "At least one branch is required"),
@@ -71,9 +73,23 @@ export const CreateDriveSchema = z.object({
 });
 export type CreateDriveData = z.infer<typeof CreateDriveSchema>;
 
+export const UpdateDriveStatusSchema = z.object({
+  status: DriveStatusEnum,
+});
+export type UpdateDriveStatusData = z.infer<typeof UpdateDriveStatusSchema>;
+
 // --- Application Schemas ---
 export const UpdateApplicationStatusSchema = z.object({
   status: ApplicationStatusEnum,
   note: z.string().optional(),
 });
 export type UpdateApplicationStatusData = z.infer<typeof UpdateApplicationStatusSchema>;
+
+// --- Announcement Schemas ---
+export const CreateAnnouncementSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  body: z.string().min(1, "Message is required"),
+  branch: z.string().optional(),
+  graduationYear: z.number().int().positive().optional(),
+});
+export type CreateAnnouncementData = z.infer<typeof CreateAnnouncementSchema>;

@@ -8,26 +8,39 @@ import AuthLayout from './layouts/AuthLayout';
 import StudentLayout from './layouts/StudentLayout';
 import AdminLayout from './layouts/AdminLayout';
 
-// Pages
+// Auth
 import Login from './features/auth/Login';
+
+// Admin Pages
+import AdminDashboard from './features/dashboard/AdminDashboard';
+import AdminDrives from './features/admin/AdminDrives';
+import AdminDriveApplicants from './features/admin/AdminDriveApplicants';
+import AdminStudents from './features/admin/AdminStudents';
+import AdminStudentDetail from './features/admin/AdminStudentDetail';
+import AdminApplications from './features/admin/AdminApplications';
+import AdminAnnouncements from './features/admin/AdminAnnouncements';
+
+// Student Pages
+import StudentDashboard from './features/dashboard/StudentDashboard';
 import StudentProfile from './features/profile/StudentProfile';
 import Opportunities from './features/drives/Opportunities';
 import DriveDetail from './features/drives/DriveDetail';
 import MyApplications from './features/applications/MyApplications';
-import AdminDrives from './features/admin/AdminDrives';
-import AdminDriveApplicants from './features/admin/AdminDriveApplicants';
-import StudentDashboard from './features/dashboard/StudentDashboard';
-import AdminDashboard from './features/dashboard/AdminDashboard';
 import NotificationsList from './features/notifications/NotificationsList';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
-function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) {
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
   const user = useAuthStore((state) => state.user);
-  
   if (!user) return <Navigate to="/login" replace />;
   if (!allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
-  
   return <>{children}</>;
 }
 
@@ -36,20 +49,37 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.6)',
+            borderRadius: '12px',
+            color: '#0f172a',
+            fontSize: '14px',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          },
+        }}
+      />
       <BrowserRouter>
         <Routes>
-          {/* Public / Auth */}
+          {/* Auth */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
           </Route>
 
           {/* Student Routes */}
-          <Route path="/student" element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
-              <StudentLayout />
-            </ProtectedRoute>
-          }>
+          <Route
+            path="/student"
+            element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <StudentLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<StudentDashboard />} />
             <Route path="profile" element={<StudentProfile />} />
             <Route path="opportunities" element={<Opportunities />} />
@@ -59,18 +89,37 @@ function App() {
           </Route>
 
           {/* Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<AdminDashboard />} />
             <Route path="drives" element={<AdminDrives />} />
             <Route path="drives/:id/applicants" element={<AdminDriveApplicants />} />
+            <Route path="students" element={<AdminStudents />} />
+            <Route path="students/:id" element={<AdminStudentDetail />} />
+            <Route path="applications" element={<AdminApplications />} />
+            <Route path="announcements" element={<AdminAnnouncements />} />
           </Route>
 
-          {/* Default Route */}
-          <Route path="*" element={<Navigate to={user?.role === 'STUDENT' ? '/student' : user ? '/admin' : '/login'} replace />} />
+          {/* Default */}
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to={
+                  user?.role === 'STUDENT' ? '/student' :
+                  user ? '/admin' :
+                  '/login'
+                }
+                replace
+              />
+            }
+          />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

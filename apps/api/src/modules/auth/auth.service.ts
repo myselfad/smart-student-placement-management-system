@@ -28,7 +28,10 @@ export class AuthService {
     });
 
     const token = generateToken({ id: user.id, role: user.role });
-    return { user, token };
+    return { 
+      user: { id: user.id, email: user.email, role: user.role, name: data.fullName }, 
+      token 
+    };
   }
 
   static async login(data: LoginData) {
@@ -37,14 +40,15 @@ export class AuthService {
       include: { studentProfile: true }
     });
 
-    if (!user) throw new Error("Invalid credentials");
+    if (!user) throw new Error("Invalid email or password");
     if (!user.isActive) throw new Error("Account is disabled");
 
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
-    if (!isValid) throw new Error("Invalid credentials");
+    if (!isValid) throw new Error("Invalid email or password");
 
     const token = generateToken({ id: user.id, role: user.role });
-    return { token, user: { id: user.id, email: user.email, role: user.role } };
+    const name = user.studentProfile?.fullName || user.name || user.email.split("@")[0];
+    return { token, user: { id: user.id, email: user.email, role: user.role, name } };
   }
 
   static async inviteAdmin(data: InviteAdminData) {

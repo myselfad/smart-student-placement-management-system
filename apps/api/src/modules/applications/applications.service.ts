@@ -93,7 +93,10 @@ export class ApplicationsService {
 
     return prisma.application.findMany({
       where: { studentProfileId: profile.id },
-      include: { drive: { include: { company: true } } },
+      include: {
+        drive: { include: { company: true } },
+        statusHistory: { orderBy: { changedAt: "asc" } },
+      },
       orderBy: { appliedAt: "desc" }
     });
   }
@@ -118,10 +121,37 @@ export class ApplicationsService {
     return app;
   }
 
+  static async listAll(status?: string) {
+    return prisma.application.findMany({
+      where: status ? { status: status as ApplicationStatus } : undefined,
+      include: {
+        studentProfile: { include: { user: { select: { email: true } } } },
+        drive: { include: { company: true } },
+        resume: true,
+      },
+      orderBy: { appliedAt: "desc" },
+    });
+  }
+
   static async updateStatus(applicationId: string, toStatus: ApplicationStatus, adminId: string, note?: string) {
     return prisma.$transaction(async (tx) => {
-      const app = await tx.application.findUnique({ where: { id: applicationId } });
+      const app = await tx.application.findUnique({
+        where: { id: applicationId },
+        include: { studentProfile: true, drive: { include: { company: true } } },
+      });
       if (!app) throw new Error("Application not found");
+
+      const label = toStatus.replace(/_/g, " ").toLowerCase();
+      await tx.notification.create({
+        data: {
+          recipientId: app.studentProfile.userId,
+          type: "STATUS_CHANGE",
+          title: `${app.drive.company.name}: application ${label}`,
+          body: `Your application for ${app.drive.title} moved to "${label}".${note ? " Note: " + note : ""}`,
+          relatedEntityType: "APPLICATION",
+          relatedEntityId: app.id,
+        },
+      });
 
       // Validate transitions based on BR-6 (Simplified for MVP, allowing Admin flexibility but normally constrained)
       // Terminal states check could go here

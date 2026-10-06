@@ -19,7 +19,7 @@ export class AuthController {
       const result = await AuthService.login(req.body);
       res.json(result);
     } catch (error: any) {
-      if (error.message === "Invalid email or password" || error.message === "Account is deactivated") {
+      if (error.message === "Invalid email or password" || error.message === "Account is disabled") {
         return res.status(401).json({ error: { code: "UNAUTHORIZED", message: error.message } });
       }
       throw error;

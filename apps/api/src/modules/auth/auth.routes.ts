@@ -9,7 +9,7 @@ import rateLimit from "express-rate-limit";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per windowMs for auth routes
+  max: 100, // Limit each IP to 100 auth requests per window
   message: "Too many login/register attempts from this IP, please try again after 15 minutes"
 });
 

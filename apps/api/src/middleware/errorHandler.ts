@@ -8,11 +8,13 @@ export const errorHandler = (
 ) => {
   console.error(err);
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   // Return safe error to client
   res.status(500).json({
     error: {
       code: "INTERNAL_SERVER_ERROR",
-      message: err.message || "An unexpected error occurred",
+      message: isProduction ? "An unexpected error occurred. Please try again." : err.message,
     },
   });
 };

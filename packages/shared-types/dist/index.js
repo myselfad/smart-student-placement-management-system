@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateApplicationStatusSchema = exports.CreateDriveSchema = exports.UpdateProfileSchema = exports.InviteAdminSchema = exports.LoginSchema = exports.RegisterStudentSchema = exports.ApplicationStatusEnum = exports.DriveStatusEnum = exports.RoleEnum = void 0;
+exports.CreateAnnouncementSchema = exports.UpdateApplicationStatusSchema = exports.UpdateDriveStatusSchema = exports.CreateDriveSchema = exports.UpdateProfileSchema = exports.InviteAdminSchema = exports.LoginSchema = exports.RegisterStudentSchema = exports.ApplicationStatusEnum = exports.DriveStatusEnum = exports.RoleEnum = void 0;
 const zod_1 = require("zod");
 // --- Enums ---
-exports.RoleEnum = zod_1.z.enum(["STUDENT", "ADMIN", "SUPER_ADMIN"]);
+exports.RoleEnum = zod_1.z.enum(["STUDENT", "ADMIN", "SUPER_ADMIN", "EDITOR"]);
 exports.DriveStatusEnum = zod_1.z.enum(["DRAFT", "OPEN", "CLOSED", "ARCHIVED"]);
 exports.ApplicationStatusEnum = zod_1.z.enum([
     "APPLIED",
@@ -26,7 +26,7 @@ exports.LoginSchema = zod_1.z.object({
 });
 exports.InviteAdminSchema = zod_1.z.object({
     email: zod_1.z.string().email(),
-    role: zod_1.z.enum(["ADMIN", "SUPER_ADMIN"]),
+    role: zod_1.z.enum(["ADMIN", "SUPER_ADMIN", "EDITOR"]),
 });
 // --- Profile Schemas ---
 exports.UpdateProfileSchema = zod_1.z.object({
@@ -37,6 +37,7 @@ exports.UpdateProfileSchema = zod_1.z.object({
     graduationYear: zod_1.z.number().int().positive().optional(),
     cgpa: zod_1.z.number().min(0).max(10).optional(),
     backlogCount: zod_1.z.number().int().min(0).optional(),
+    skills: zod_1.z.array(zod_1.z.string()).optional(),
 });
 // --- Drive Schemas ---
 exports.CreateDriveSchema = zod_1.z.object({
@@ -49,6 +50,7 @@ exports.CreateDriveSchema = zod_1.z.object({
     selectionProcess: zod_1.z.string().optional(),
     openings: zod_1.z.number().int().min(1),
     applicationDeadline: zod_1.z.string().datetime(),
+    status: exports.DriveStatusEnum.optional(),
     // Eligibility Criteria
     minCgpa: zod_1.z.number().min(0).max(10).optional(),
     allowedBranches: zod_1.z.array(zod_1.z.string()).min(1, "At least one branch is required"),
@@ -56,8 +58,18 @@ exports.CreateDriveSchema = zod_1.z.object({
     allowedGraduationYears: zod_1.z.array(zod_1.z.number().int().positive()).min(1, "At least one graduation year is required"),
     requiredSkills: zod_1.z.array(zod_1.z.string()).optional(),
 });
+exports.UpdateDriveStatusSchema = zod_1.z.object({
+    status: exports.DriveStatusEnum,
+});
 // --- Application Schemas ---
 exports.UpdateApplicationStatusSchema = zod_1.z.object({
     status: exports.ApplicationStatusEnum,
     note: zod_1.z.string().optional(),
+});
+// --- Announcement Schemas ---
+exports.CreateAnnouncementSchema = zod_1.z.object({
+    title: zod_1.z.string().min(1, "Title is required"),
+    body: zod_1.z.string().min(1, "Message is required"),
+    branch: zod_1.z.string().optional(),
+    graduationYear: zod_1.z.number().int().positive().optional(),
 });

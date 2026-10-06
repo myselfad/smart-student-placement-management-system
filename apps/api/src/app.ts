@@ -8,7 +8,11 @@ const app = express();
 import rateLimit from "express-rate-limit";
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: process.env.FRONTEND_URL ? [process.env.FRONTEND_URL, "http://localhost:5173", "http://localhost:5174"] : "*",
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const apiLimiter = rateLimit({
@@ -25,6 +29,7 @@ import drivesRoutes from "./modules/drives/drives.routes";
 import applicationsRoutes from "./modules/applications/applications.routes";
 import notificationsRoutes from "./modules/notifications/notifications.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
+import announcementsRoutes from "./modules/announcements/announcements.routes";
 import path from "path";
 
 // Routes
@@ -40,6 +45,7 @@ apiRouter.use("/drives", drivesRoutes);
 apiRouter.use("/applications", applicationsRoutes);
 apiRouter.use("/notifications", notificationsRoutes);
 apiRouter.use("/dashboard", dashboardRoutes);
+apiRouter.use("/announcements", announcementsRoutes);
 
 app.use("/api", apiRouter);
 
