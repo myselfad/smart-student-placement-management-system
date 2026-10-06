@@ -1,15 +1,32 @@
 {
   "version": 2,
   "buildCommand": "turbo run build",
-  "outputDirectory": "apps/web/dist",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "destination": "/apps/api/api/index.ts"
+      "src": "apps/api/api/index.ts",
+      "use": "@vercel/node"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "apps/web/package.json",
+      "use": "@vercel/static-build"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/apps/api/api/index.ts"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "/apps/api/api/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
