@@ -5,7 +5,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
 // Ensure we load the .env from the apps/api directory no matter where this is run from
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// BUT ONLY for local development. Vercel provides env vars via process.env directly.
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+}
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
