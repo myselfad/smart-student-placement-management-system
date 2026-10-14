@@ -6,38 +6,40 @@ import { generateToken } from "../../utils/jwt";
 
 export class AuthService {
   static async registerStudent(data: RegisterStudentData) {
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    const email = data.email.trim().toLowerCase();
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       throw new Error("Email already in use");
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
-    
+
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email,
         passwordHash,
         role: Role.STUDENT,
         studentProfile: {
           create: {
-            fullName: data.fullName,
+            fullName: data.fullName.trim(),
             profileCompletionPct: 20, // initial completion
-          }
-        }
+          },
+        },
       },
     });
 
     const token = generateToken({ id: user.id, role: user.role });
-    return { 
-      user: { id: user.id, email: user.email, role: user.role, name: data.fullName }, 
-      token 
+    return {
+      user: { id: user.id, email: user.email, role: user.role, name: data.fullName.trim() },
+      token,
     };
   }
 
   static async login(data: LoginData) {
+    const email = data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
-      where: { email: data.email },
-      include: { studentProfile: true }
+      where: { email },
+      include: { studentProfile: true },
     });
 
     if (!user) throw new Error("Invalid email or password");
@@ -52,7 +54,8 @@ export class AuthService {
   }
 
   static async inviteAdmin(data: InviteAdminData) {
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    const email = data.email.trim().toLowerCase();
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       throw new Error("Email already in use");
     }
@@ -63,15 +66,12 @@ export class AuthService {
 
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email,
         passwordHash,
         role: data.role as Role,
-      }
+      },
     });
 
-    // In a real app, send email. For MVP, log it.
-    console.log(`[Email Mock] Sent invite to ${user.email} with temp password: ${tempPassword}`);
-    
     return { user: { id: user.id, email: user.email, role: user.role }, tempPassword };
   }
 }

@@ -42,16 +42,19 @@ const COMPANIES = [
 
 async function main() {
   console.log('🌱 Starting database seed...');
-  const defaultPassword = await bcrypt.hash('Student@123', 10);
-  const adminPassword = await bcrypt.hash('Admin@123', 10);
-  const editorPassword = await bcrypt.hash('Editor@123', 10);
+  const adminEmail = (process.env.ADMIN_INITIAL_EMAIL || 'admin@sspms.edu').trim().toLowerCase();
+  const rawAdminPassword = process.env.ADMIN_INITIAL_PASSWORD || 'Admin@123';
+
+  const defaultPassword = await bcrypt.hash(process.env.DEMO_STUDENT_PASSWORD || 'Student@123', 10);
+  const adminPassword = await bcrypt.hash(rawAdminPassword, 10);
+  const editorPassword = await bcrypt.hash(process.env.DEMO_EDITOR_PASSWORD || 'Editor@123', 10);
 
   // 1. Create Admins
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@sspms.edu' },
+    where: { email: adminEmail },
     update: { name: 'System Admin' },
     create: {
-      email: 'admin@sspms.edu',
+      email: adminEmail,
       passwordHash: adminPassword,
       role: Role.SUPER_ADMIN,
       name: 'System Admin',

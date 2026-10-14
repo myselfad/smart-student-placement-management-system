@@ -8,20 +8,31 @@ import prisma from "./lib/prisma";
 
 const app = express();
 
-// ─── CORS ───────────────────────────────────────────────────────────────────
-// CRIT-3 fix: never combine credentials:true with wildcard origin.
-// If FRONTEND_URL is not set, allow localhost only (safe default).
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, "http://localhost:5173", "http://localhost:5174"]
-  : ["http://localhost:5173", "http://localhost:5174"];
+// Trust reverse proxy (Render, Vercel, Cloudflare) so express-rate-limit
+// and req.ip correctly read the X-Forwarded-For header without throwing errors.
+app.set("trust proxy", 1);
+
+// ─── CORS CONFIGURATION ─────────────────────────────────────────────────────
+const getAllowedOrigins = (): string[] => {
+  const defaults = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"];
+  if (!process.env.FRONTEND_URL) return defaults;
+  const configured = process.env.FRONTEND_URL.split(",")
+    .map((url) => url.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  return Array.from(new Set([...defaults, ...configured]));
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (curl, mobile, server-to-server)
+      // Allow requests with no origin (curl, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      const cleanOrigin = origin.replace(/\/+$/, "");
+      const allowed = getAllowedOrigins();
+      if (allowed.includes(cleanOrigin) || cleanOrigin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -32,19 +43,40 @@ app.use(express.json({ limit: "1mb" }));
 // ─── RATE LIMITING ──────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // tight limit for auth endpoints
-  message: { error: { code: "RATE_LIMIT", message: "Too many requests, please try again later" } },
+  max: 30, // 30 attempts per 15 minutes
+  message: { error: { code: "RATE_LIMIT", message: "Too many attempts from this IP, please try again later" } },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  max: 1000,
   message: { error: { code: "RATE_LIMIT", message: "Too many requests from this IP, please try again later" } },
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// ─── HEALTH CHECKS ──────────────────────────────────────────────────────────
+const handleHealthCheck = async (_req: express.Request, res: express.Response) => {
+  const health: Record<string, unknown> = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: Math.round(process.uptime()),
+  };
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    health.db = "ok";
+    return res.status(200).json(health);
+  } catch {
+    health.db = "error";
+    health.status = "degraded";
+    return res.status(503).json(health);
+  }
+};
+
+// Available at root /health (for Render web service health probes) and /api/health
+app.get("/health", handleHealthCheck);
 
 // ─── ROUTES ─────────────────────────────────────────────────────────────────
 import authRoutes from "./modules/auth/auth.routes";
@@ -59,24 +91,7 @@ import eligibilityRoutes from "./modules/eligibility/eligibility.routes";
 
 const apiRouter = express.Router();
 
-// MED-1: Health check with DB connectivity
-apiRouter.get("/health", async (_req, res) => {
-  const health: Record<string, unknown> = {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  };
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    health.db = "ok";
-  } catch {
-    health.db = "error";
-    health.status = "degraded";
-    return res.status(503).json(health);
-  }
-  res.json(health);
-});
-
+apiRouter.get("/health", handleHealthCheck);
 apiRouter.use("/auth", authLimiter, authRoutes);
 apiRouter.use("/students", studentsRoutes);
 apiRouter.use("/companies", companiesRoutes);

@@ -1,105 +1,101 @@
-# Deploying SSPMS to Production
+# SSPMS Production Deployment Architecture
 
-This guide explains how to deploy the SSPMS (Smart Student Placement Management System) to **Vercel** with a managed **PostgreSQL** database (e.g., Supabase, Neon, or Vercel Postgres).
-
-## Prerequisites
-
-1. A [GitHub](https://github.com/) account.
-2. A [Vercel](https://vercel.com/) account (linked to your GitHub).
-3. A managed PostgreSQL database (e.g., [Supabase](https://supabase.com) or [Neon](https://neon.tech)).
+## Target Architecture
+- **Frontend:** Vercel (React 19 + Vite + Tailwind CSS)
+- **Backend:** Render Web Service (Node.js + Express API)
+- **Database:** Supabase PostgreSQL (Managed PostgreSQL)
+- **ORM:** Prisma 7 with `@prisma/adapter-pg`
+- **File Storage:** Supabase Storage (Persistent object storage for resumes)
 
 ---
 
-## Step 1: Push Code to GitHub
+## 1. Supabase Database & Storage Setup
 
-First, make sure your code is tracked via Git and pushed to a GitHub repository:
+1. Log in to [Supabase](https://supabase.com) and create or open your project.
+2. Go to **Project Settings** -> **Database**.
+3. Under **Connection string**, select **URI**:
+   - Choose **Mode: Session** (port 5432) or Direct connection.
+   - Example URI:
+     `postgresql://postgres.[PROJECT_REF]:[YOUR_PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres?sslmode=require`
+4. **Create the Storage Bucket:**
+   - In Supabase, go to **Storage**.
+   - Click **New Bucket**, name it `resumes`.
+   - Make it **Public** (or configure public access policy).
+5. **Get your API Keys:**
+   - In Supabase, go to **Project Settings** -> **API**.
+   - Copy **Project URL** (e.g. `https://xyz.supabase.co`).
+   - Copy **service_role secret** (for secure backend uploads).
+
+---
+
+## 2. Apply Database Schema to Supabase
+
+Run this once locally from the repository root:
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit - Ready for deployment"
-git branch -M main
-git remote add origin https://github.com/your-username/sspms.git
-git push -u origin main
+# Push schema tables to your Supabase PostgreSQL
+DATABASE_URL="your-supabase-connection-string" npx prisma db push --schema=apps/api/prisma/schema.prisma
+
+# (Optional) Seed the initial admin and demo data
+DATABASE_URL="your-supabase-connection-string" npm run db:seed --workspace=api
 ```
 
-*(Note: The `.gitignore` is correctly configured to prevent secrets from being pushed.)*
+*(Default seeded admin: `admin@sspms.edu` / `Admin@123`)*
 
 ---
 
-## Step 2: Prepare your Database
+## 3. Render Backend Deployment
 
-1. Create a new PostgreSQL database on Supabase or Neon.
-2. Copy your connection string (it looks like `postgresql://user:password@host:5432/dbname?sslmode=require`).
-3. Have this string ready for the next step.
+1. Go to [Render](https://render.com) and click **New +** -> **Web Service**.
+2. Connect your GitHub repository: `smart-student-placement-management-system`.
+3. Configure the service settings:
+   - **Name:** `sspms-api`
+   - **Environment:** `Node`
+   - **Region:** Choose closest to your Supabase region (e.g., US East / Ohio).
+   - **Branch:** `main`
+   - **Root Directory:** *(leave blank / repository root)*
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `node apps/api/dist/index.js`
+   - **Health Check Path:** `/health`
+4. **Add Environment Variables in Render:**
 
-*(Note: Prisma 7 natively supports Vercel Serverless database pooling through `@prisma/adapter-pg`)*
+| Key | Example Value | Description |
+|---|---|---|
+| `NODE_ENV` | `production` | Production environment flag |
+| `PORT` | `10000` | (Render sets this automatically) |
+| `DATABASE_URL` | `postgresql://postgres.[ref]:[pass]@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require` | Supabase PostgreSQL Connection String |
+| `JWT_SECRET` | *(64-character random string)* | Auth token signing secret |
+| `FRONTEND_URL` | `https://smart-student-placement-management.vercel.app` | Vercel frontend URL for CORS |
+| `STORAGE_PROVIDER` | `supabase` | Enables persistent resume storage |
+| `SUPABASE_URL` | `https://[ref].supabase.co` | Supabase Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | *(your service_role key)* | Supabase Service Role Secret |
+| `SUPABASE_STORAGE_BUCKET` | `resumes` | Resume storage bucket name |
+| `DB_POOL_SIZE` | `10` | Database connection pool limit |
 
----
-
-## Step 3: Deploy to Vercel
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard).
-2. Click **Add New...** -> **Project**.
-3. Import your GitHub repository (`sspms`).
-4. Vercel will automatically detect the **Turborepo** architecture.
-
-### Configure Build Settings:
-- **Framework Preset:** Turborepo
-- **Root Directory:** `./` (Leave as default)
-- **Build Command:** `turbo run build`
-- **Output Directory:** Leave blank (handled by `vercel.json`)
-
-### Configure Environment Variables:
-
-Add the following environment variables during Vercel setup:
-
-| Variable Name   | Value                                                              |
-|-----------------|--------------------------------------------------------------------|
-| `DATABASE_URL`  | Your PostgreSQL connection string                                  |
-| `JWT_SECRET`    | A secure random string (e.g., `openssl rand -hex 32`)              |
-| `FRONTEND_URL`  | The Vercel URL (e.g., `https://sspms-app.vercel.app`)              |
-| `NODE_ENV`      | `production`                                                       |
-
-*(Do NOT add `VITE_API_URL`. The app is configured to default to `/api` securely via Vercel rewrites).*
-
-5. Click **Deploy**.
+5. Click **Create Web Service**. Wait for the deploy to complete and verify `https://your-api.onrender.com/health` returns `{"status":"ok","db":"ok"}`.
 
 ---
 
-## Step 4: Database Migration & Seeding
+## 4. Vercel Frontend Configuration
 
-Vercel will successfully build the app, but the database will be empty.
-
-1. Open your terminal locally.
-2. Link your local project to Vercel:
-   ```bash
-   npx vercel link
-   ```
-3. Pull the environment variables:
-   ```bash
-   npx vercel env pull
-   ```
-4. Push the database schema safely (this creates the tables without dropping them):
-   ```bash
-   cd apps/api
-   npx prisma db push
-   ```
-5. **(Optional) Seed the demo data:**
-   If you want to populate the live database with the 20+ realistic demo students, companies, and applications:
-   ```bash
-   npm run db:seed
-   ```
+1. Go to your [Vercel Dashboard](https://vercel.com) -> `smart-student-placement-management`.
+2. Go to **Settings** -> **Environment Variables**.
+3. Add / Update:
+   - **Name:** `VITE_API_URL`
+   - **Value:** `https://your-api.onrender.com/api` (replace with your real Render API URL)
+4. Trigger a **Redeploy** on Vercel so the frontend builds with the new API URL.
 
 ---
 
-## 🔒 Security Notes
+## 5. Local Development
 
-- **Never** run `npx prisma migrate reset` or `npx prisma db seed` on production unless you explicitly want to wipe data.
-- The `errorHandler` is now configured for production and will obscure sensitive Prisma stack traces from end-users.
-- Passwords are securely hashed via `bcrypt` and stripped from API responses.
-- CORS is locked down to your specific frontend URL configured in the environment.
+To run locally against your local PostgreSQL or Supabase:
+```bash
+# Install dependencies
+npm install
 
-## 🔄 Updates
-
-To update your deployment later, simply commit and push your changes to the `main` branch. Vercel will automatically trigger a new deployment.
+# Start both frontend & backend concurrently
+npm run dev
+```
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:4000/api`
