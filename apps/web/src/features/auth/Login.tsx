@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../../api/client';
 import { useAuthStore } from '../../store/useAuthStore';
 import toast from 'react-hot-toast';
@@ -109,6 +109,12 @@ export default function Login() {
       <div className="mt-8 text-gray-500 text-sm text-center">
         Secured by SSPMS Placement Cell <br />
         <span className="text-gray-600 text-xs mt-2 inline-block">Authorized personnel only</span>
+      </div>
+      <div className="mt-4 text-center">
+        <span className="text-gray-500 text-sm">New student? </span>
+        <Link to="/register" className="text-blue-500 hover:text-blue-400 text-sm font-medium transition-colors">
+          Create an account
+        </Link>
       </div>
     </div>
   );

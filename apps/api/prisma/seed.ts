@@ -322,9 +322,10 @@ async function main() {
   }
 
   console.log('✅ Seeding complete!');
-  console.log('--- DEMO ACCOUNTS ---');
-  console.log('Admin: admin@sspms.edu / Admin@123');
-  console.log('Demo Student: aarav.sharma@sspms.edu / Student@123');
+
+  console.log("✅ Seeding complete! Check .env.example for demo account emails.");
+
+
 }
 
 main()

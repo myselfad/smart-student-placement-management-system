@@ -10,6 +10,7 @@ import AdminLayout from './layouts/AdminLayout';
 
 // Auth
 import Login from './features/auth/Login';
+import Register from './features/auth/Register';
 
 // Admin Pages
 import AdminDashboard from './features/dashboard/AdminDashboard';
@@ -69,6 +70,7 @@ function App() {
           {/* Auth */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
           </Route>
 
           {/* Student Routes */}
@@ -88,11 +90,11 @@ function App() {
             <Route path="notifications" element={<NotificationsList />} />
           </Route>
 
-          {/* Admin Routes */}
+          {/* Admin Routes — EDITOR role also gets access */}
           <Route
             path="/admin"
             element={
-              <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+              <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'EDITOR']}>
                 <AdminLayout />
               </ProtectedRoute>
             }
