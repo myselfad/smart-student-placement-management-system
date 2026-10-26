@@ -63,14 +63,17 @@ const handleHealthCheck = async (_req: express.Request, res: express.Response) =
     status: "ok",
     timestamp: new Date().toISOString(),
     uptime: Math.round(process.uptime()),
+    databaseUrlSet: !!process.env.DATABASE_URL,
   };
   try {
     await prisma.$queryRaw`SELECT 1`;
     health.db = "ok";
     return res.status(200).json(health);
-  } catch {
+  } catch (err: any) {
     health.db = "error";
     health.status = "degraded";
+    health.error = err?.message || String(err);
+    health.code = err?.code || null;
     return res.status(503).json(health);
   }
 };
